@@ -1,0 +1,105 @@
+Geometry = GenFormat {
+2  F
+Si
+1  1    0.8750000000E+00    0.8750000000E+00    0.8750000000E+00
+2  1    0.1250000000E+00    0.1250000000E+00    0.1250000000E+00
+0.0000000000E+00    0.0000000000E+00    0.0000000000E+00
+0.3364155000E+01   -0.0000000000E+00    0.1942295000E+01
+0.1121385000E+01    0.3171756000E+01    0.1942295000E+01
+-0.0000000000E+00   -0.0000000000E+00    0.3884592000E+01
+}
+Hamiltonian = DFTB {
+  Scc = Yes
+  SccTolerance = 1e-5
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/Users/inp5/Desktop/research/tight_binding/dftb_test/params/siband-1.1.0/skfiles/"
+    Separator = "-"
+    Suffix = ".skf"
+    LowerCaseTypeName = No
+  }
+  MaxAngularMomentum = Si {
+"d"
+  }
+  KPointsAndWeights = SupercellFolding {
+20 0 0
+0 20 0
+0 0 20
+0.5 0.5 0.5
+  }
+  PolynomialRepulsive = {}
+  ShellResolvedSCC = No
+  OldSKInterpolation = No
+  ReadInitialCharges = No
+  InitialCharges = {}
+  EwaldParameter = 0.0000000000000000
+  EwaldTolerance = 1.0000000000000001E-009
+  ConvergentSCCOnly = Yes
+  HCorrection = None {}
+  SpinPolarisation = {}
+  ElectricField = {}
+  Solver = RelativelyRobust {}
+  Charge = 0.0000000000000000
+  MaxSCCIterations = 100
+  OnSiteCorrection = {}
+  Dispersion = {}
+  Solvation = {}
+  Electrostatics = GammaFunctional {}
+  ThirdOrder = No
+  ThirdOrderFull = No
+  Differentiation = FiniteDiff {
+    Delta = 1.2207031250000000E-004
+  }
+  ForceEvaluation = "Traditional"
+  Mixer = Broyden {
+    MixingParameter = 0.20000000000000001
+    InverseJacobiWeight = 1.0000000000000000E-002
+    MinimalWeight = 1.0000000000000000
+    MaximalWeight = 100000.00000000000
+    WeightFactor = 1.0000000000000000E-002
+  }
+  Filling = Fermi {
+    Temperature = 0.0000000000000000
+    IndependentKFilling = No
+  }
+}
+Analysis = {
+  ProjectStates = Region {
+    Atoms = Si
+    ShellResolved = Yes
+    Label = "dos_si"
+    OrbitalResolved = No
+  }
+  WriteEigenvectors = No
+  WriteBandOut = Yes
+  MullikenAnalysis = Yes
+  WriteNetCharges = No
+  AtomResolvedEnergies = No
+  PrintForces = No
+}
+ParserOptions = {
+  ParserVersion = 14
+  WriteHSDInput = Yes
+  StopAfterParsing = No
+  IgnoreUnprocessedNodes = No
+}
+Reks = None {}
+Driver = {}
+ExcitedState = {}
+Options = {
+  WriteDetailedOut = Yes
+  WriteAutotestTag = No
+  WriteDetailedXML = No
+  WriteResultsTag = No
+  RestartFrequency = 20
+  RandomSeed = 0
+  WriteHS = No
+  WriteRealHS = No
+  MinimiseMemoryUsage = No
+  ShowFoldedCoords = No
+  TimingVerbosity = 1
+  WriteCharges = Yes
+  WriteChargesAsText = No
+  BinaryAccessTypes = {
+ "stream"
+  }
+}

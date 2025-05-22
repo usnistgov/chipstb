@@ -1,0 +1,36 @@
+Geometry = GenFormat {
+<<<"geom.out.gen"
+}
+
+Hamiltonian = DFTB {
+  Scc = Yes
+  SccTolerance = 1e-5
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/Users/inp5/Desktop/research/tight_binding/dftb_test/params/siband-1.1.0/skfiles/"
+    Separator = "-"
+    Suffix = ".skf"
+  }
+  MaxAngularMomentum {
+    Si = "d"
+  }
+  KPointsAndWeights = SupercellFolding {
+    20 0 0
+    0 20 0
+    0 0 20
+    0.5 0.5 0.5
+  }
+}
+
+Analysis {
+  ProjectStates {
+    Region {
+      Atoms = Si
+      ShellResolved = Yes
+      Label = "dos_si"
+    }
+  }
+}
+
+ParserOptions {
+  ParserVersion = 12
+}
