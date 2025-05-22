@@ -1,0 +1,43 @@
+Geometry = VaspFormat {
+  <<<"POSCAR"
+}
+
+Driver = GeometryOptimization {
+  Optimizer = Rational {}
+  MovedAtoms = 1:-1
+  MaxSteps = 100
+  OutputPrefix = "geom.out"
+  Convergence {GradElem = 1E-4}
+}
+
+Hamiltonian = DFTB {
+  Scc = Yes
+  SccTolerance = 1e-5
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/Users/inp5/Desktop/research/tight_binding/dftb_test/params/siband-1.1.0/skfiles/"
+    Separator = "-"
+    Suffix = ".skf"
+  }
+  MaxAngularMomentum {
+    Si = "d"
+  }
+  KPointsAndWeights = SupercellFolding {
+    20 0 0
+    0 20 0
+    0 0 20
+    0.0 0.0 0.0
+  }
+}
+
+
+
+
+Options {}
+
+Analysis {
+  CalculateForces = Yes
+}
+
+ParserOptions {
+  ParserVersion = 12
+}
