@@ -5,7 +5,7 @@ import pprint
 from tqdm import tqdm
 from jarvis.db.jsonutils import loadjson
 from chipstb.config import CHIPSTBConfig
-from chipstb.tb_analyzer import TBAnalyzer
+#from chipstb.tb_analyzer import TBAnalyzer
 
 
 def main():
