@@ -1,0 +1,8 @@
+{
+  "jid_list": ["JVASP-1002"],
+  "calculator_types": ["dftb+"],
+  "calculator_executables":["/wrk/knc6/Software/dftb/bin/dftb+"],
+  "k_mesh":[[6,6,6]],
+  "sk_or_model_dir":["/wrk/knc6/chipstb/chipstb/siband-1.1.0/skfiles/"],
+  "properties_to_calculate": ["optimize_geometry", "calculate_dos", "calculate_band_structure", "compare_with_vasp"]
+}
