@@ -5,11 +5,13 @@ import pprint
 from tqdm import tqdm
 from jarvis.db.jsonutils import loadjson
 from chipstb.config import CHIPSTBConfig
-#from chipstb.tb_analyzer import TBAnalyzer
+from chipstb.dftb import main as main_dftb
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run CHIPSTB Tight-Binding Analyzer")
+    parser = argparse.ArgumentParser(
+        description="Run CHIPSTB Tight-Binding Analyzer"
+    )
     parser.add_argument(
         "--input_file",
         default="tb_input.json",
@@ -32,17 +34,25 @@ def main():
 
     if config.structure_path:
         for calc in calculators:
-            print(f"Running TB analysis on structure {config.structure_path} using {calc}...")
+            print(
+                f"Running TB analysis on structure {config.structure_path} using {calc}..."
+            )
             tb = TBAnalyzer(config=config, calculator_type=calc)
             tb.run_local()
         return
 
     if jids:
-        for jid in tqdm(jids, desc="Processing JIDs"):
-            for calc in calculators:
+        for j, jid in enumerate(jids):
+
+            for c, calc in enumerate(calculators):
+                if calc == "dftb+":
+                    main_dftb(
+                        jid=jids[j],
+                        dftb_executable=config.calculator_executables[c],
+                        k_mesh=config.k_mesh[j],
+                        sk_dir=config.sk_or_model_dir[j],
+                    )
                 print(f"Running TB analysis on {jid} using {calc}...")
-                tb = TBAnalyzer(config=config, calculator_type=calc, jid=jid)
-                tb.run_from_jid()
     else:
         raise ValueError("No valid structure_path or JID(s) provided.")
 
