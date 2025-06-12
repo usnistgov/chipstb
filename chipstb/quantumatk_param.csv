@@ -10,7 +10,7 @@ Cu,867,matsci;PTBP
 Al,816,matsci;PTBP
 Ti,1029,matsci;tiorg;trans3d;PTBP
 C,91,matsci;auorg;halorg;hyb;mio;pbc;tiorg;trans3d;znorg;PTBP
-Au,815,auorg;PTBP
+Au,825,auorg;PTBP
 AlP,1327,matsci;PTBP
 ZnO,1195,znorg;PTBP
 ZrO2,113,dftb2;PTBP
