@@ -1,0 +1,17 @@
+Material,ID, params
+Si,1002,siband;matsci;PTBP;pbc;hyb?
+SiC,8118,matsci;pbc;PTBP
+,8158
+,107
+SiO2,41,siband;matsci;PTBP;pbc
+,34674
+GaAs,1174,hyb;PTBP
+Cu,867,matsci;PTBP
+Al,816,matsci;PTBP
+Ti,1029,matsci;PTBP
+C,91,matsci;PTBP
+Au,815,auorg;PTBP
+AlP,1327,PTBP
+ZnO,1195,3ob
+ZrO2,113,PTBP
+Al2O3,32,matsci;PTBP
