@@ -1,9 +1,9 @@
 Material,ID, params
-Si,1002,siband;matsci;PTBP;pbc;hyb?
+Si,1002,siband;matsci;PTBP;pbc;magsil;hyb?
 SiC,8118,matsci;pbc;PTBP
 ,8158
 ,107
-SiO2,41,siband;matsci;PTBP;pbc
+SiO2,41,siband;matsci;PTBP;pbc;magsil
 ,34674
 GaAs,1174,hyb;PTBP
 Cu,867,matsci;PTBP
