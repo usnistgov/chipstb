@@ -80,6 +80,8 @@ class CHIPSTBConfig(BaseSettings):
         default_factory=lambda: [
             "optimize_geometry",
             "calculate_dos",
+            "calculate_eos",
+            "calculate_phonons",
             "calculate_band_structure",
             "compare_with_vasp",
         ],

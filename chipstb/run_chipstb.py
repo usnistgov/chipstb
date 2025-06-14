@@ -51,6 +51,7 @@ def main():
                         dftb_executable=config.calculator_executables[c],
                         k_mesh=config.k_mesh[j],
                         sk_dir=config.sk_or_model_dir[j],
+                        config=config,
                     )
                 print(f"Running TB analysis on {jid} using {calc}...")
     else:
