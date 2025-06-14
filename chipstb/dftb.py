@@ -22,30 +22,18 @@ from jarvis.io.vasp.outputs import Vasprun
 
 def extract_kpoints_from_vasprun(vasprun_file):
     """Extract k-point list from vasprun.xml."""
-    with open(vasprun_file, "r") as file:
+    with open(vasprun_file, 'r') as file:
         lines = file.readlines()
 
-    start = next(
-        (i for i, line in enumerate(lines) if "kpointlist" in line.lower()),
-        None,
-    )
-    end = next(
-        (
-            i
-            for i, line in enumerate(lines[start:], start)
-            if "</varray>" in line.lower()
-        ),
-        None,
-    )
+    start = next((i for i, line in enumerate(lines) if 'kpointlist' in line.lower()), None)
+    end = next((i for i, line in enumerate(lines[start:], start) if '</varray>' in line.lower()), None)
 
     if start is None or end is None:
         raise ValueError("Could not find k-point list in vasprun.xml.")
 
     kpoints = []
-    for line in lines[start + 1 : end]:
-        coords = [
-            float(x) for x in line.strip().strip("<v>").strip("</v>").split()
-        ]
+    for line in lines[start+1:end]:
+        coords = [float(x) for x in line.strip().strip('<v>').strip('</v>').split()]
         kpoints.append(coords)
 
     return kpoints
@@ -61,29 +49,20 @@ class DFTBCalculator:
 
         # Check if executable exists
         if not os.path.exists(dftb_executable):
-            raise FileNotFoundError(
-                f"DFTB+ executable not found: {dftb_executable}"
-            )
+            raise FileNotFoundError(f"DFTB+ executable not found: {dftb_executable}")
 
         # Check if SK files directory exists
         if not os.path.exists(sk_dir):
-            raise FileNotFoundError(
-                f"Slater-Koster files directory not found: {sk_dir}"
-            )
+            raise FileNotFoundError(f"Slater-Koster files directory not found: {sk_dir}")
 
-    def run_command(self, cmd, cwd=None, log="run.log", text=True):
+    def run_command(self, cmd, cwd=None, log="run.log",text=True):
         """Run command and stream output."""
         print(f"Running: {' '.join(cmd)}")
         log_path = Path(cwd) / log if cwd else log
 
         with open(log_path, "a") as fh:
-            proc = subprocess.Popen(
-                cmd,
-                cwd=cwd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=text,
-            )
+            proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, text=text)
             for line in proc.stdout:
                 print(line.rstrip())
                 fh.write(line)
@@ -111,7 +90,7 @@ class DFTBCalculator:
         """Create SCF calculation input file."""
         maxl_block = self.get_max_angular_momentum(atoms)
 
-        hsd_content = f"""Geometry = GenFormat {{
+        hsd_content = f'''Geometry = GenFormat {{
     <<< "geo.gen"
 }}
 
@@ -121,7 +100,7 @@ Hamiltonian = DFTB {{
 {maxl_block}
     }}
     SlaterKosterFiles = Type2FileNames {{
-        Prefix = "{self.sk_dir.rstrip('/')}/"
+        Prefix = "{self.sk_dir}/"
         Separator = "-"
         Suffix = ".skf"
     }}
@@ -152,10 +131,10 @@ Options = {{
 
 ParserOptions = {{
     ParserVersion = 12
-}}"""
+}}'''
 
         if optimize:
-            driver_block = """
+            driver_block = '''
 Driver = GeometryOptimization {
     Optimizer = Rational {}
     MovedAtoms = 1:-1
@@ -164,12 +143,11 @@ Driver = GeometryOptimization {
     Convergence = {
         GradElem = 1E-4
     }
-}"""
-            hsd_content = hsd_content.replace(
-                "Geometry =", driver_block + "\n\nGeometry ="
-            )
+    LatticeOpt = Yes
+}'''
+            hsd_content = hsd_content.replace('Geometry =', driver_block + '\n\nGeometry =')
 
-        with open(output_file, "w") as f:
+        with open(output_file, 'w') as f:
             f.write(hsd_content)
 
     def create_band_input(self, atoms, kpoints, output_file):
@@ -179,12 +157,10 @@ Driver = GeometryOptimization {
         # Format k-points for band structure
         kpoint_lines = []
         for kp in kpoints:
-            kpoint_lines.append(
-                f"    1  {kp[0]:.8f}  {kp[1]:.8f}  {kp[2]:.8f}"
-            )
+            kpoint_lines.append(f"    1  {kp[0]:.8f}  {kp[1]:.8f}  {kp[2]:.8f}")
         kpoint_block = "\n".join(kpoint_lines)
 
-        hsd_content = f"""Geometry = GenFormat {{
+        hsd_content = f'''Geometry = GenFormat {{
     <<< "geom.out.gen"
 }}
 
@@ -210,9 +186,9 @@ Options = {{
 
 ParserOptions = {{
     ParserVersion = 12
-}}"""
+}}'''
 
-        with open(output_file, "w") as f:
+        with open(output_file, 'w') as f:
             f.write(hsd_content)
 
     def extract_results(self, detailed_out_path):
@@ -221,7 +197,7 @@ ParserOptions = {{
         forces = []
         fermi_ev = None
 
-        with open(detailed_out_path, "r") as f:
+        with open(detailed_out_path, 'r') as f:
             lines = f.readlines()
 
         # Extract energy
@@ -233,19 +209,17 @@ ParserOptions = {{
         # Extract forces
         for i, line in enumerate(lines):
             if "Total Forces" in line:
-                for l in lines[i + 2 :]:
+                for l in lines[i+2:]:
                     if not l.strip():
                         break
                     parts = l.split()
-                    forces.append(
-                        [float(x) * 51.422086 for x in parts[-3:]]
-                    )  # Ha/Bohr to eV/Å
+                    forces.append([float(x) * 51.422086 for x in parts[-3:]])  # Ha/Bohr to eV/Å
                 break
 
         # Extract Fermi level
         for line in lines:
-            if "Fermi" in line and "eV" in line:
-                match = re.search(r"([-+]?\d*\.\d+|\d+)\s*eV", line)
+            if 'Fermi' in line and 'eV' in line:
+                match = re.search(r'([-+]?\d*\.\d+|\d+)\s*eV', line)
                 if match:
                     fermi_ev = float(match.group(1))
                 break
@@ -258,11 +232,11 @@ ParserOptions = {{
         dos_file = work_dir / "dos_total.dat"
 
         # Generate DOS using dp_dos
-        os.system(f"dp_dos {band_out} {dos_file}")
+        os.system(f'dp_dos {band_out} {dos_file}')
 
         # Read and process DOS data
         x_values, y_values = [], []
-        with open(dos_file, "r") as f:
+        with open(dos_file, 'r') as f:
             for line in f:
                 tokens = line.split()
                 if tokens and self._is_number(tokens[0]):
@@ -283,8 +257,8 @@ ParserOptions = {{
     def calculate_band_properties(self, band_energies):
         """Calculate band properties: bandgap, VBM, CBM."""
         # Find the highest occupied band (VBM) and lowest unoccupied band (CBM)
-        vbm = -float("inf")
-        cbm = float("inf")
+        vbm = -float('inf')
+        cbm = float('inf')
 
         for kpt_bands in band_energies:
             for energy in kpt_bands:
@@ -294,11 +268,11 @@ ParserOptions = {{
                     cbm = min(cbm, energy)
 
         # Handle metallic systems
-        if vbm == -float("inf") or cbm == float("inf"):
+        if vbm == -float('inf') or cbm == float('inf'):
             bandgap = 0.0
-            if vbm == -float("inf"):
+            if vbm == -float('inf'):
                 vbm = None
-            if cbm == float("inf"):
+            if cbm == float('inf'):
                 cbm = None
         else:
             bandgap = max(0.0, cbm - vbm)
@@ -311,24 +285,22 @@ ParserOptions = {{
 
         # Plot each band
         for i in range(energies.shape[1]):
-            plt.plot(kpoints, energies[:, i], "b-", linewidth=1.5, alpha=0.8)
+            plt.plot(kpoints, energies[:, i], 'b-', linewidth=1.5, alpha=0.8)
 
         # Add Fermi level line
-        plt.axhline(
-            y=0, color="r", linestyle="--", linewidth=1, label="Fermi Level"
-        )
+        plt.axhline(y=0, color='r', linestyle='--', linewidth=1, label='Fermi Level')
 
         # Formatting
-        plt.xlabel("K-point Path")
-        plt.ylabel("Energy (E - E_F) [eV]")
-        plt.title("Band Structure")
+        plt.xlabel('K-point Path')
+        plt.ylabel('Energy (E - E_F) [eV]')
+        plt.title('Band Structure')
         plt.ylim(-6, 6)
         plt.grid(True, alpha=0.3)
         plt.legend()
         plt.tight_layout()
 
         # Save plot
-        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
         plt.close()
 
         # Return plot data for potential reuse
@@ -337,7 +309,7 @@ ParserOptions = {{
             "energies": energies.tolist(),
             "fermi_level": 0.0,
             "energy_range": [-6, 6],
-            "plot_file": str(output_file),
+            "plot_file": str(output_file)
         }
 
         return plot_data
@@ -349,26 +321,24 @@ ParserOptions = {{
         # Plot DOS
         if dos.ndim == 2:
             for i in range(dos.shape[0]):
-                plt.plot(energy, dos[i, :], "k-", linewidth=1.5, alpha=0.8)
+                plt.plot(energy, dos[i, :], 'k-', linewidth=1.5, alpha=0.8)
         else:
-            plt.plot(energy, dos, "k-", linewidth=1.5)
+            plt.plot(energy, dos, 'k-', linewidth=1.5)
 
         # Add Fermi level line
-        plt.axvline(
-            x=0, color="r", linestyle="--", linewidth=1, label="Fermi Level"
-        )
+        plt.axvline(x=0, color='r', linestyle='--', linewidth=1, label='Fermi Level')
 
         # Formatting
-        plt.xlabel("Energy (E - E_F) [eV]")
-        plt.ylabel("DOS [states/eV]")
-        plt.title("Density of States")
+        plt.xlabel('Energy (E - E_F) [eV]')
+        plt.ylabel('DOS [states/eV]')
+        plt.title('Density of States')
         plt.xlim(-6, 6)
         plt.grid(True, alpha=0.3)
         plt.legend()
         plt.tight_layout()
 
         # Save plot
-        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
         plt.close()
 
         # Return plot data
@@ -377,38 +347,34 @@ ParserOptions = {{
             "dos": dos.tolist() if dos.ndim == 1 else dos.tolist(),
             "fermi_level": 0.0,
             "energy_range": [-6, 6],
-            "plot_file": str(output_file),
+            "plot_file": str(output_file)
         }
 
         return plot_data
 
-    def save_electronic_properties(
-        self, work_dir, energy, fermi_ev, bandgap=None, vbm=None, cbm=None
-    ):
+    def save_electronic_properties(self, work_dir, energy, fermi_ev, bandgap=None, vbm=None, cbm=None):
         """Save electronic properties to JSON file."""
         properties = {
             "total_energy_eV": energy,
             "fermi_level_eV": fermi_ev,
             "bandgap_eV": bandgap,
             "vbm_eV": vbm,
-            "cbm_eV": cbm,
+            "cbm_eV": cbm
         }
 
         # Remove None values
         properties = {k: v for k, v in properties.items() if v is not None}
 
-        with open(Path(work_dir) / "electronic_properties.json", "w") as f:
+        with open(Path(work_dir) / "electronic_properties.json", 'w') as f:
             json.dump(properties, f, indent=2)
 
         return properties
 
-    def compare_with_vasp(
-        self, work_dir, vasprun, output_file="comparison.png"
-    ):
+    def compare_with_vasp(self, work_dir, vasprun, output_file="comparison.png"):
         """Compare DFTB+ band structure with VASP."""
         # Read DFTB+ band data
         band_file = work_dir / "band_tot.dat"
-        os.system(f"dp_bands {work_dir}/band.out {work_dir}/band")
+        os.system(f'dp_bands {work_dir}/band.out {work_dir}/band')
 
         dftb_data = pd.read_csv(band_file, delim_whitespace=True, header=None)
         dftb_kpts = dftb_data.iloc[:, 0].values
@@ -420,10 +386,7 @@ ParserOptions = {{
 
         # Process VASP data
         vasp_fermi = vasprun.efermi
-        vasp_eigs = (
-            np.array([eig[:, 0] for eig in vasprun.eigenvalues[0]]).T
-            - vasp_fermi
-        )
+        vasp_eigs = np.array([eig[:, 0] for eig in vasprun.eigenvalues[0]]).T - vasp_fermi
 
         # Compare bands
         energy_tol = 4
@@ -433,9 +396,7 @@ ParserOptions = {{
             for dftb_e in dftb_bands[k]:
                 if -energy_tol < dftb_e < energy_tol:
                     vasp_band = vasp_eigs[:, k]
-                    valid_vasp = vasp_band[
-                        (vasp_band > -energy_tol) & (vasp_band < energy_tol)
-                    ]
+                    valid_vasp = vasp_band[(vasp_band > -energy_tol) & (vasp_band < energy_tol)]
                     if len(valid_vasp) > 0:
                         min_diff = np.min(np.abs(dftb_e - valid_vasp))
                         differences.append(min_diff)
@@ -447,46 +408,24 @@ ParserOptions = {{
         gs = GridSpec(1, 2)
 
         plt.subplot(gs[0, 0])
-        plt.title("(a) Band Structure Comparison")
+        plt.title('(a) Band Structure Comparison')
         for band in dftb_bands.T:
-            plt.plot(
-                band,
-                "b-",
-                alpha=0.7,
-                label=(
-                    "DFTB+"
-                    if "DFTB+" not in plt.gca().get_legend_handles_labels()[1]
-                    else ""
-                ),
-            )
+            plt.plot(band, 'b-', alpha=0.7, label='DFTB+' if 'DFTB+' not in plt.gca().get_legend_handles_labels()[1] else '')
         for band in vasp_eigs:
-            plt.plot(
-                band,
-                "r-",
-                alpha=0.7,
-                label=(
-                    "VASP"
-                    if "VASP" not in plt.gca().get_legend_handles_labels()[1]
-                    else ""
-                ),
-            )
+            plt.plot(band, 'r-', alpha=0.7, label='VASP' if 'VASP' not in plt.gca().get_legend_handles_labels()[1] else '')
         plt.ylim(-energy_tol, energy_tol)
-        plt.ylabel("Energy [eV]")
+        plt.ylabel('Energy [eV]')
         plt.legend()
 
         plt.subplot(gs[0, 1])
-        plt.title("(b) Error Distribution")
-        plt.scatter(
-            differences,
-            [dftb_bands.flatten()[i] for i in range(len(differences))],
-            alpha=0.6,
-        )
+        plt.title('(b) Error Distribution')
+        plt.scatter(differences, [dftb_bands.flatten()[i] for i in range(len(differences))], alpha=0.6)
         plt.ylim(-energy_tol, energy_tol)
-        plt.xlabel("DFTB - VASP (δ) [eV]")
-        plt.ylabel("Energy [eV]")
+        plt.xlabel('DFTB - VASP (δ) [eV]')
+        plt.ylabel('Energy [eV]')
 
         plt.tight_layout()
-        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
         plt.close()
 
         return max_diff
@@ -505,19 +444,16 @@ ParserOptions = {{
         self.run_command([self.dftb_executable], cwd=work_path)
 
         # Extract results
-        energy, forces, fermi_ev = self.extract_results(
-            work_path / "detailed.out"
-        )
+        energy, forces, fermi_ev = self.extract_results(work_path / "detailed.out")
         final_atoms = read(work_path / "geom.out.gen")
 
         # Calculate DOS for optimization
         energy_grid, dos = self.calculate_dos(work_path, fermi_ev)
-        dos_plot_data = self.create_dos_plot(
-            energy_grid, dos, work_path / "dos.png"
-        )
+        dos_plot_data = self.create_dos_plot(energy_grid, dos, work_path / "dos.png")
+
 
         band_file = work_path / "band_tot.dat"
-        os.system(f"dp_bands {work_path}/band.out {work_path}/band")
+        os.system(f'dp_bands {work_path}/band.out {work_path}/band')
 
         # Read band structure data
         band_data = pd.read_csv(band_file, delim_whitespace=True, header=None)
@@ -528,9 +464,32 @@ ParserOptions = {{
         band_energies_adjusted = band_energies - fermi_ev
 
         # Calculate band properties
-        bandgap, vbm, cbm = self.calculate_band_properties(
-            band_energies_adjusted
-        )
+        # bandgap, vbm, cbm = self.calculate_band_properties(band_energies_adjusted)
+
+       
+
+        # Read the band.out file
+        band_data = pd.read_csv(f'{work_path}/band.out' , sep="\s+", header=None, comment="#")
+
+        # Remove the header line (e.g., rows starting with 'KPT')
+        band_data = band_data[pd.to_numeric(band_data[0], errors='coerce').notna()]
+
+        # Convert energy and occupation columns
+        band_data[1] = band_data[1].astype(float)  # Energy
+        band_data[2] = band_data[2].astype(float)  # Occupation
+
+        # VBM: max energy where occupation > 0
+        vbm = band_data[1][band_data[2] > 0].max()
+
+        # CBM: min energy where occupation == 0
+        cbm = band_data[1][band_data[2] == 0].min()
+
+        # Band gap
+        bandgap = cbm - vbm if cbm > vbm else 0.0
+
+        print(f"New VBM: {vbm:.4f} eV")
+        print(f"New CBM: {cbm:.4f} eV")
+        print(f"New Band Gap: {bandgap:.4f} eV")
 
         # Save electronic properties JSON
         electronic_props = self.save_electronic_properties(
@@ -541,6 +500,7 @@ ParserOptions = {{
             "energy": energy,
             "forces": forces.tolist(),
             "fermi_level": fermi_ev,
+            "initial_atoms": ase_to_atoms(atoms).to_dict(),
             "final_atoms": ase_to_atoms(final_atoms).to_dict(),
             "electronic_properties": electronic_props,
             "bandgap": bandgap,
@@ -549,18 +509,16 @@ ParserOptions = {{
             "dos": {
                 "energy_grid": energy_grid.tolist(),
                 "dos_values": dos.tolist() if dos.ndim == 1 else dos.tolist(),
-                "plot_data": dos_plot_data,
-            },
+                "plot_data": dos_plot_data
+            }
         }
 
-        with open(work_path / "results.json", "w") as f:
+        with open(work_path / "results.json", 'w') as f:
             json.dump(results, f, indent=2)
 
         return results, final_atoms
 
-    def run_band_structure(
-        self, atoms, kpoints, vasprun=None, work_dir="band"
-    ):
+    def run_band_structure(self, atoms, kpoints, vasprun=None, work_dir="band"):
         """Run band structure calculation with comprehensive analysis."""
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
@@ -574,13 +532,11 @@ ParserOptions = {{
         self.run_command([self.dftb_executable], cwd=work_path)
 
         # Extract basic results
-        energy, forces, fermi_ev = self.extract_results(
-            work_path / "detailed.out"
-        )
+        energy, forces, fermi_ev = self.extract_results(work_path / "detailed.out")
 
         # Generate band structure data
         band_file = work_path / "band_tot.dat"
-        os.system(f"dp_bands {work_path}/band.out {work_path}/band")
+        os.system(f'dp_bands {work_path}/band.out {work_path}/band')
 
         # Read band structure data
         band_data = pd.read_csv(band_file, delim_whitespace=True, header=None)
@@ -591,9 +547,31 @@ ParserOptions = {{
         band_energies_adjusted = band_energies - fermi_ev
 
         # Calculate band properties
-        bandgap, vbm, cbm = self.calculate_band_properties(
-            band_energies_adjusted
-        )
+        # bandgap, vbm, cbm = self.calculate_band_properties(band_energies_adjusted)
+
+
+        # Read the band.out file
+        band_data = pd.read_csv(f'{work_path}/band.out' , sep="\s+", header=None, comment="#")
+
+        # Remove the header line (e.g., rows starting with 'KPT')
+        band_data = band_data[pd.to_numeric(band_data[0], errors='coerce').notna()]
+
+        # Convert energy and occupation columns
+        band_data[1] = band_data[1].astype(float)  # Energy
+        band_data[2] = band_data[2].astype(float)  # Occupation
+
+        # VBM: max energy where occupation > 0
+        vbm = band_data[1][band_data[2] > 0].max()
+
+        # CBM: min energy where occupation == 0
+        cbm = band_data[1][band_data[2] == 0].min()
+
+        # Band gap
+        bandgap = cbm - vbm if cbm > vbm else 0.0
+
+        print(f"New VBM: {vbm:.4f} eV")
+        print(f"New CBM: {cbm:.4f} eV")
+        print(f"New Band Gap: {bandgap:.4f} eV")
 
         # Generate DOS data for band directory
         energy_grid, dos_data = self.calculate_dos(work_path, fermi_ev)
@@ -617,12 +595,10 @@ ParserOptions = {{
         max_diff = None
         vasp_comparison = None
         if vasprun:
-            max_diff = self.compare_with_vasp(
-                work_path, vasprun, work_path / "comparison.png"
-            )
+            max_diff = self.compare_with_vasp(work_path, vasprun, work_path / "comparison.png")
             vasp_comparison = {
                 "max_difference": max_diff,
-                "comparison_plot": str(work_path / "comparison.png"),
+                "comparison_plot": str(work_path / "comparison.png")
             }
 
         # Compile comprehensive results
@@ -636,23 +612,19 @@ ParserOptions = {{
             "band_structure": {
                 "kpoints": band_kpts.tolist(),
                 "energies": band_energies_adjusted.tolist(),
-                "plot_data": band_plot_data,
+                "plot_data": band_plot_data
             },
             "dos": {
                 "energy_grid": energy_grid.tolist(),
-                "dos_values": (
-                    dos_data.tolist()
-                    if dos_data.ndim == 1
-                    else dos_data.tolist()
-                ),
-                "plot_data": dos_plot_data,
+                "dos_values": dos_data.tolist() if dos_data.ndim == 1 else dos_data.tolist(),
+                "plot_data": dos_plot_data
             },
             "vasp_comparison": vasp_comparison,
-            "max_difference": max_diff,
+            "max_difference": max_diff
         }
 
         # Save results
-        with open(work_path / "results.json", "w") as f:
+        with open(work_path / "results.json", 'w') as f:
             json.dump(results, f, indent=2)
 
         return results
@@ -669,13 +641,15 @@ ParserOptions = {{
 
 def download_vasp_data(jid):
     """Download VASP data from JARVIS database."""
-    dat = get_jid_data(jid=jid, dataset="dft_3d")
-    atoms = Atoms.from_dict(dat["atoms"]).ase_converter()
+    dat = get_jid_data(jid=jid, dataset='dft_3d')
+    atoms = Atoms.from_dict(dat['atoms'])
+    atoms=atoms.get_conventional_atoms
+    atoms=atoms.ase_converter()
 
     # Find band structure calculation
-    for raw_file in dat["raw_files"]:
-        if "Bandst" in raw_file:
-            calc_zipfile_link = raw_file.split(",")[2]
+    for raw_file in dat['raw_files']:
+        if 'Bandst' in raw_file:
+            calc_zipfile_link = raw_file.split(',')[2]
             r = requests.get(calc_zipfile_link)
             z = zipfile.ZipFile(io.BytesIO(r.content))
             vrun_content = z.read("vasprun.xml").decode("utf-8")
@@ -691,124 +665,103 @@ def download_vasp_data(jid):
 
     raise ValueError("No band structure data found")
 
+def main(jid = 'JVASP-816',
+         atoms=None,dftb_executable = "/home/kamalch/miniconda3/envs/dftp/bin/dftb+",
+         sk_dir = "/mnt/c/Users/knc6/OneDrive - NIST/KamalLaptop/DFTB_EPH/ParameterSets/ptbp/complete_set",
+         #sk_dir = "/mnt/c/Users/knc6/OneDrive - NIST/KamalLaptop/DFTB_EPH/matsci-0-3",
+         k_mesh = [10,10,10]):
+  """Main execution function."""
+  cwd=os.getcwd()
+  work_path = Path(jid)
+  work_path.mkdir(exist_ok=True)
+  os.chdir(work_path)
+  try:
 
-def main(
-    jid="JVASP-1002",
-    atoms=None,
-    dftb_executable="/wrk/knc6/Software/dftb/bin/dftb+",
-    sk_dir="/wrk/knc6/chipstb/chipstb/siband-1.1.0/skfiles/",
-    k_mesh=[10, 10, 10],
-):
-    """Main execution function."""
-    cwd = os.getcwd()
-    name = jid + "_dftb"
-    work_path = Path(name)
-    work_path.mkdir(exist_ok=True)
-    os.chdir(work_path)
+    # Configuration
+
+
+
+    # sk_dir = "/content/matsci-0.3.0/skfiles/"
+
+
+    # Check if paths exist
+    if not os.path.exists(dftb_executable):
+        print(f"Error: DFTB+ executable not found at {dftb_executable}")
+        print("Please check the path or install DFTB+")
+        return
+
+    if not os.path.exists(sk_dir):
+        print(f"Error: Slater-Koster files directory not found at {sk_dir}")
+        print("Please check the path or download the SK files")
+        return
+
+    # Download data
+    print(f"Downloading data for {jid}...")
     try:
+        atoms, vasprun, kpoints = download_vasp_data(jid)
+    except Exception as e:
+        print(f"Error downloading VASP data: {e}")
+        return
 
-        # Configuration
+    # Initialize calculator
+    try:
+        calc = DFTBCalculator(dftb_executable, sk_dir, k_mesh)
+    except FileNotFoundError as e:
+        print(f"Error initializing calculator: {e}")
+        return
 
-        # sk_dir = "/content/matsci-0.3.0/skfiles/"
+    # Run optimization
+    print("Running geometry optimization...")
+    try:
+        opt_results, final_atoms = calc.run_optimization(atoms)
+        print(f"Final energy: {opt_results['energy']:.4f} eV")
+        print(f"Fermi level: {opt_results['fermi_level']:.4f} eV")
+        print(f"Electronic properties saved: opt/electronic_properties.json")
+        print(f"DOS plot saved: opt/dos.png")
+    except Exception as e:
+        print(f"Error during optimization: {e}")
+        return
 
-        # Check if paths exist
-        if not os.path.exists(dftb_executable):
-            print(f"Error: DFTB+ executable not found at {dftb_executable}")
-            print("Please check the path or install DFTB+")
-            return
+    # Run band structure
+    print("Running band structure calculation...")
+    try:
+        band_results = calc.run_band_structure(final_atoms, kpoints, vasprun)
+        print(f"Bandgap: {band_results['bandgap']:.4f} eV")
+        print(f"VBM: {band_results['vbm']:.4f} eV" if band_results['vbm'] else "VBM: Metallic")
+        print(f"CBM: {band_results['cbm']:.4f} eV" if band_results['cbm'] else "CBM: Metallic")
+        if band_results['max_difference']:
+            print(f"Maximum band difference vs VASP: {band_results['max_difference']:.4f} eV")
 
-        if not os.path.exists(sk_dir):
-            print(
-                f"Error: Slater-Koster files directory not found at {sk_dir}"
-            )
-            print("Please check the path or download the SK files")
-            return
+        # Print file locations
+        print(f"Electronic properties saved: band/electronic_properties.json")
+        print(f"Band structure plot saved: band/band_structure.png")
+        print(f"DOS plot saved: band/dos.png")
 
-        # Download data
-        print(f"Downloading data for {jid}...")
-        try:
-            atoms, vasprun, kpoints = download_vasp_data(jid)
-        except Exception as e:
-            print(f"Error downloading VASP data: {e}")
-            return
+        # Print summary
+        print("\n=== Calculation Summary ===")
+        print(f"System: {jid}")
+        print(f"Total energy: {band_results['energy']:.4f} eV")
+        print(f"Fermi level: {band_results['fermi_level']:.4f} eV")
+        print(f"Bandgap: {band_results['bandgap']:.4f} eV")
 
-        # Initialize calculator
-        try:
-            calc = DFTBCalculator(dftb_executable, sk_dir, k_mesh)
-        except FileNotFoundError as e:
-            print(f"Error initializing calculator: {e}")
-            return
+    except Exception as e:
+        print(f"Error during band structure calculation: {e}")
+        return
 
-        # Run optimization
-        print("Running geometry optimization...")
-        try:
-            opt_results, final_atoms = calc.run_optimization(atoms)
-            print(f"Final energy: {opt_results['energy']:.4f} eV")
-            print(f"Fermi level: {opt_results['fermi_level']:.4f} eV")
-            print(
-                f"Electronic properties saved: opt/electronic_properties.json"
-            )
-            print(f"DOS plot saved: opt/dos.png")
-        except Exception as e:
-            print(f"Error during optimization: {e}")
-            return
+    print("Calculations completed successfully!")
+    print("\nOutput structure:")
+    print("opt/")
+    print("  ├── electronic_properties.json")
+    print("  ├── dos.png")
+    print("  └── results.json")
+    print("band/")
+    print("  ├── electronic_properties.json")
+    print("  ├── band_structure.png")
+    print("  ├── dos.png")
+    print("  └── band_results.json")
+  except:
+    pass
 
-        # Run band structure
-        print("Running band structure calculation...")
-        try:
-            band_results = calc.run_band_structure(
-                final_atoms, kpoints, vasprun
-            )
-            print(f"Bandgap: {band_results['bandgap']:.4f} eV")
-            print(
-                f"VBM: {band_results['vbm']:.4f} eV"
-                if band_results["vbm"]
-                else "VBM: Metallic"
-            )
-            print(
-                f"CBM: {band_results['cbm']:.4f} eV"
-                if band_results["cbm"]
-                else "CBM: Metallic"
-            )
-            if band_results["max_difference"]:
-                print(
-                    f"Maximum band difference vs VASP: {band_results['max_difference']:.4f} eV"
-                )
-
-            # Print file locations
-            print(
-                f"Electronic properties saved: band/electronic_properties.json"
-            )
-            print(f"Band structure plot saved: band/band_structure.png")
-            print(f"DOS plot saved: band/dos.png")
-
-            # Print summary
-            print("\n=== Calculation Summary ===")
-            print(f"System: {jid}")
-            print(f"Total energy: {band_results['energy']:.4f} eV")
-            print(f"Fermi level: {band_results['fermi_level']:.4f} eV")
-            print(f"Bandgap: {band_results['bandgap']:.4f} eV")
-
-        except Exception as e:
-            print(f"Error during band structure calculation: {e}")
-            return
-
-        print("Calculations completed successfully!")
-        print("\nOutput structure:")
-        print("opt/")
-        print("  ├── electronic_properties.json")
-        print("  ├── dos.png")
-        print("  └── results.json")
-        print("band/")
-        print("  ├── electronic_properties.json")
-        print("  ├── band_structure.png")
-        print("  ├── dos.png")
-        print("  └── band_results.json")
-    except:
-        pass
-
-    os.chdir(cwd)
-
-
+  os.chdir(cwd)
 if __name__ == "__main__":
     main()
