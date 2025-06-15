@@ -164,7 +164,7 @@ Driver = GeometryOptimization {
     Convergence = {
         GradElem = 1E-4
     }
-    # LatticeOpt = Yes
+    LatticeOpt = Yes
 }"""
             hsd_content = hsd_content.replace(
                 "Geometry =", driver_block + "\n\nGeometry ="
@@ -833,7 +833,7 @@ ParserOptions = {{
         results = self._calculate_phonon_properties(work_path, atoms)
 
         # Save results
-        with open(work_path / "phonon_results.json", "w") as f:
+        with open(work_path / "results.json", "w") as f:
             json.dump(results, f, indent=2, default=self._json_serializable)
 
         print(f"Phonon calculation completed. Results saved in {work_path}/")
@@ -1331,7 +1331,7 @@ ParserOptions = {{
         }
 
         # Save results
-        with open(work_path / "eos_results.json", "w") as f:
+        with open(work_path / "results.json", "w") as f:
             json.dump(results, f, indent=2, default=self._json_serializable)
 
         # Print summary
@@ -1803,9 +1803,11 @@ def main(
 ):
     """Main execution function."""
     cwd = os.getcwd()
-    work_path = Path(jid)
+    work_path = Path(jid + "_dftb")
     work_path.mkdir(exist_ok=True)
     os.chdir(work_path)
+    # TODO: Run specific jobs as per config
+    # TODO: pass only config to main
     try:
 
         # Configuration

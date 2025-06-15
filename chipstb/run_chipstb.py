@@ -5,7 +5,8 @@ import pprint
 from tqdm import tqdm
 from jarvis.db.jsonutils import loadjson
 from chipstb.config import CHIPSTBConfig
-from chipstb.dftb import main as main_dftb
+from chipstb.dftb_calc import main as main_dftb
+from chipstb.tb3py_calc import main as main_tb3py
 
 
 def main():
@@ -51,6 +52,11 @@ def main():
                         dftb_executable=config.calculator_executables[c],
                         k_mesh=config.k_mesh[j],
                         sk_dir=config.sk_or_model_dir[j],
+                        config=config,
+                    )
+                elif calc == "tb3py":
+                    main_tb3py(
+                        jid=jids[j],
                         config=config,
                     )
                 print(f"Running TB analysis on {jid} using {calc}...")
