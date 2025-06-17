@@ -195,6 +195,7 @@ Hamiltonian = DFTB {{
     MaxAngularMomentum = {{
 {maxl_block}
     }}
+    MaxSCCIterations = 10
     SlaterKosterFiles = Type2FileNames {{
         Prefix = "{self.sk_dir}/"
         Separator = "-"
