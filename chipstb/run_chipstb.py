@@ -49,9 +49,6 @@ def main():
                 if calc == "dftb+":
                     main_dftb(
                         jid=jids[j],
-                        dftb_executable=config.calculator_executables[c],
-                        k_mesh=config.k_mesh[j],
-                        sk_dir=config.sk_or_model_dir[j],
                         config=config,
                     )
                 elif calc == "tb3py":

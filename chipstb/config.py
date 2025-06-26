@@ -15,21 +15,21 @@ class CHIPSTBConfig(BaseSettings):
         description="List of calculator types for ensemble or benchmarking",
     )
 
-    calculator_executables: Optional[List[str]] = Field(
+    dftb_executable: Optional[str] = Field(
         default=None,
-        description="List of calculator types for ensemble or benchmarking",
+        description="DFTB+ path, try 'which dftb+'",
     )
     # Path to Slater-Koster or Hamiltonian data
-    sk_or_model_dir: Optional[List[str]] = Field(
+    skf_dir: Optional[str] = Field(
         default=None,
-        description="Path to SK files or trained TB Hamiltonians (e.g., Wannier90, TB3PY)",
+        description="Path to SK files",
     )
 
     # General TB settings
-    k_mesh: Optional[List[List[int]]] = Field(
-        default_factory=lambda: [[6, 6, 6]],
-        description="List of k-meshes for each material in jid_list or structure",
-    )
+    # k_mesh: Optional[List[List[int]]] = Field(
+    #    default_factory=lambda: [[6, 6, 6]],
+    #    description="List of k-meshes for each material in jid_list or structure",
+    # )
 
     band_kpoints_path: Optional[str] = Field(
         default=None,

@@ -1,8 +1,13 @@
 {
-  "jid_list": ["JVASP-1002"],
-  "calculator_types": ["tb3py","dftb+"],
-  "calculator_executables":["/home/kamalch/miniconda3/envs/dftp/bin/dftb+"],
-  "k_mesh":[[6,6,6]],
-  "sk_or_model_dir":["/mnt/c/Users/knc6/OneDrive - NIST/KamalLaptop/DFTB_EPH/ParameterSets/ptbp/complete_set"],
-  "properties_to_calculate": ["optimize_geometry", "calculate_dos", "calculate_band_structure", "compare_with_vasp","calculate_eos","calculate_phonon"]
+    "jid_list": ["JVASP-816", "JVASP-1002", "JVASP-8118", "JVASP-1174"],
+    "calculator_types": ["dftb+", "tb3py"],
+    "dftb_executable": "/home/kamalch/miniconda3/envs/dftp/bin/dftb+",
+    "skf_dir": "/mnt/c/Users/knc6/OneDrive - NIST/KamalLaptop/DFTB_EPH/ParameterSets/ptbp/complete_set",
+    "properties_to_calculate": [
+        "optimize_geometry",
+        "calculate_dos",
+        "calculate_band_structure",
+        "compare_with_vasp",
+        "calculate_eos",
+    ],
 }
