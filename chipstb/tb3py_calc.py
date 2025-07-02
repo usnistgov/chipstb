@@ -425,7 +425,7 @@ else
     ThreeBodyTB.TB.write_tb_crys("tbc.xml.gz", tbc)
 end
 
-
+write_hr_dat(tbc,filename="my_hr.dat")
 vals = calc_bands(tbc,{kpoints})
 #vals = calc_bands(tbc, [0.0 0.0 0.0; 0.0 0.0 0.1])
 efermi=tbc.efermi
@@ -1370,11 +1370,12 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
             print("Running band structure calculation...")
             print("=" * 50)
             try:
-                vasprun_for_comparison = (
-                    vasprun_bands
-                    if config.get("compare_with_vasp", True)
-                    else None
-                )
+                vasprun_for_comparison = True
+                #(
+                #    vasprun_bands
+                #    if config.get("compare_with_vasp", True)
+                #    else None
+                #)
                 bs_path = ""
                 for kk in kpoints_bands:
                     # bs_path+=map(str(" ".join(kk)))+";"
