@@ -6,49 +6,22 @@ import tempfile
 import zipfile
 import io
 from pathlib import Path
-
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import requests
 import re
-
+from chipstb.utils import (
+    extract_kpoints_from_vasprun,
+    download_jarvis_dft_data,
+)
 from ase.io import read, write
 from jarvis.core.atoms import Atoms, ase_to_atoms
 from jarvis.db.figshare import get_jid_data
 from jarvis.io.vasp.outputs import Vasprun
-
-
-def extract_kpoints_from_vasprun(vasprun_file):
-    """Extract k-point list from vasprun.xml."""
-    with open(vasprun_file, "r") as file:
-        lines = file.readlines()
-
-    start = next(
-        (i for i, line in enumerate(lines) if "kpointlist" in line.lower()),
-        None,
-    )
-    end = next(
-        (
-            i
-            for i, line in enumerate(lines[start:], start)
-            if "</varray>" in line.lower()
-        ),
-        None,
-    )
-
-    if start is None or end is None:
-        raise ValueError("Could not find k-point list in vasprun.xml.")
-
-    kpoints = []
-    for line in lines[start + 1 : end]:
-        coords = [
-            float(x) for x in line.strip().strip("<v>").strip("</v>").split()
-        ]
-        kpoints.append(coords)
-
-    return kpoints
+from jarvis.core.kpoints import Kpoints3D
 
 
 class DFTBCalculator:
@@ -495,6 +468,7 @@ ParserOptions = {{
 
     def run_optimization(self, atoms, work_dir="opt"):
         """Run geometry optimization calculation."""
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -565,6 +539,7 @@ ParserOptions = {{
         electronic_props = self.save_electronic_properties(
             work_path, energy, fermi_ev
         )
+        t2 = time.time()
 
         results = {
             "energy": energy,
@@ -576,6 +551,7 @@ ParserOptions = {{
             "bandgap": bandgap,
             "vbm": vbm,
             "cbm": cbm,
+            "time": t2 - t1,
             "dos": {
                 "energy_grid": energy_grid.tolist(),
                 "dos_values": dos.tolist() if dos.ndim == 1 else dos.tolist(),
@@ -593,6 +569,7 @@ ParserOptions = {{
         self, atoms, kpoints, vasprun=None, work_dir="band"
     ):
         """Run band structure calculation with comprehensive analysis."""
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -681,6 +658,7 @@ ParserOptions = {{
                 "comparison_plot": str(work_path / "comparison.png"),
             }
 
+        t2 = time.time()
         # Compile comprehensive results
         results = {
             "energy": energy,
@@ -688,6 +666,7 @@ ParserOptions = {{
             "bandgap": bandgap,
             "vbm": vbm,
             "cbm": cbm,
+            "time": t2 - t1,
             "electronic_properties": electronic_props,
             "band_structure": {
                 "kpoints": band_kpts.tolist(),
@@ -753,6 +732,7 @@ ParserOptions = {{
         --------
         dict : Phonon calculation results including band structure and DOS
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -832,7 +812,11 @@ ParserOptions = {{
         # Calculate phonon band structure and DOS
         print("Calculating phonon properties...")
         results = self._calculate_phonon_properties(work_path, atoms)
-
+        t2 = time.time()
+        try:
+            results["time"] = t2 - t1
+        except Exception:
+            pass
         # Save results
         with open(work_path / "results.json", "w") as f:
             json.dump(results, f, indent=2, default=self._json_serializable)
@@ -1197,6 +1181,7 @@ ParserOptions = {{
         --------
         dict : EOS results including bulk modulus, equilibrium volume, and fitted parameters
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -1313,6 +1298,7 @@ ParserOptions = {{
             eos_type,
         )
 
+        t2 = time.time()
         # Save detailed results
         results = {
             "initial_volume_A3": float(V0),
@@ -1320,6 +1306,7 @@ ParserOptions = {{
             "n_points_calculated": len(valid_data),
             "n_points_requested": n_points,
             "eos_type": eos_type,
+            "time": t2 - t1,
             "optimize_each_volume": optimize_each,
             "raw_data": {
                 "volumes_A3": volumes_valid.tolist(),
@@ -1767,39 +1754,9 @@ ParserOptions = {{
         }
 
 
-def download_vasp_data(jid):
-    """Download VASP data from JARVIS database."""
-    dat = get_jid_data(jid=jid, dataset="dft_3d")
-    atoms = Atoms.from_dict(dat["atoms"])
-    # atoms = atoms.get_conventional_atoms
-    atoms = atoms.ase_converter()
-
-    # Find band structure calculation
-    for raw_file in dat["raw_files"]:
-        if "Bandst" in raw_file:
-            calc_zipfile_link = raw_file.split(",")[2]
-            r = requests.get(calc_zipfile_link)
-            z = zipfile.ZipFile(io.BytesIO(r.content))
-            vrun_content = z.read("vasprun.xml").decode("utf-8")
-
-            # Create temporary file
-            fd, path = tempfile.mkstemp()
-            with os.fdopen(fd, "w") as tmp:
-                tmp.write(vrun_content)
-
-            vrun = Vasprun(path)
-            kpoints = extract_kpoints_from_vasprun(path)
-            return atoms, vrun, kpoints
-
-    raise ValueError("No band structure data found")
-
-
 def main(
     jid="JVASP-816",
     atoms=None,
-    dftb_executable="dftb+",
-    sk_dir="ParameterSets/ptbp/complete_set",
-    k_mesh=[10, 10, 10],
     config=None,
 ):
     """Main execution function."""
@@ -1807,8 +1764,9 @@ def main(
     work_path = Path(jid + "_dftb")
     work_path.mkdir(exist_ok=True)
     os.chdir(work_path)
-    # TODO: Run specific jobs as per config
-    # TODO: pass only config to main
+    k_mesh = [10, 10, 10]
+    dftb_executable = config.dftb_executable
+    sk_dir = config.skf_dir
     try:
 
         # Configuration
@@ -1829,7 +1787,11 @@ def main(
         # Download data
         print(f"Downloading data for {jid}...")
         try:
-            atoms, vasprun, kpoints = download_vasp_data(jid)
+            info = download_jarvis_dft_data(jid)
+            atoms = info["atoms"]
+            vasprun_bands = info["vasprun_bands"]
+            kpoints_bands = info["kpoints_bands"]
+            k_mesh = info["kpoints_scf"]
         except Exception as e:
             print(f"Error downloading VASP data: {e}")
             return
@@ -1842,91 +1804,86 @@ def main(
             return
 
         # Run optimization
-        print("Running geometry optimization...")
-        try:
-            opt_results, final_atoms = calc.run_optimization(atoms)
-            print(f"Final energy: {opt_results['energy']:.4f} eV")
-            print(f"Fermi level: {opt_results['fermi_level']:.4f} eV")
-            print(
-                f"Electronic properties saved: opt/electronic_properties.json"
-            )
-            print(f"DOS plot saved: opt/dos.png")
-        except Exception as e:
-            print(f"Error during optimization: {e}")
-            return
-
-        print("Running EOS...")
-        try:
-            eos_results = calc.run_eos_bulkmod(
-                final_atoms, work_dir="eos", volume_range=0.15, n_points=9
-            )
-        except Exception as e:
-            print(f"Error during optimization: {e}")
-            return
-
-        try:
-            # Run phonon calculation
-            phonon_results = calc.run_phonon(
-                final_atoms,
-                work_dir="phonon",
-                supercell=[2, 2, 2],
-                amplitude=5e-4,
-                gamma_centered=True,
-            )
-        except Exception as e:
-            print(f"Error during optimization: {e}")
-            return
-        # Run band structure
-        print("Running band structure calculation...")
-        try:
-            band_results = calc.run_band_structure(
-                final_atoms, kpoints, vasprun
-            )
-            print(f"Bandgap: {band_results['bandgap']:.4f} eV")
-            print(
-                f"VBM: {band_results['vbm']:.4f} eV"
-                if band_results["vbm"]
-                else "VBM: Metallic"
-            )
-            print(
-                f"CBM: {band_results['cbm']:.4f} eV"
-                if band_results["cbm"]
-                else "CBM: Metallic"
-            )
-            if band_results["max_difference"]:
+        if "optimize_geometry" in config.properties_to_calculate:
+            print("Running geometry optimization...")
+            # opt_results, final_atoms = calc.run_optimization(atoms)
+            try:
+                opt_results, final_atoms = calc.run_optimization(atoms)
+                print(f"Final energy: {opt_results['energy']:.4f} eV")
+                print(f"Fermi level: {opt_results['fermi_level']:.4f} eV")
                 print(
-                    f"Maximum band difference vs VASP: {band_results['max_difference']:.4f} eV"
+                    f"Electronic properties saved: opt/electronic_properties.json"
                 )
+                print(f"DOS plot saved: opt/dos.png")
+            except Exception as e:
+                print(f"Error during optimization: {e}")
+                return
+        else:
+            final_atoms = atoms
 
-            # Print file locations
-            print(
-                f"Electronic properties saved: band/electronic_properties.json"
-            )
-            print(f"Band structure plot saved: band/band_structure.png")
-            print(f"DOS plot saved: band/dos.png")
+        if "calculate_eos" in config.properties_to_calculate:
+            print("Running EOS...")
+            try:
+                eos_results = calc.run_eos_bulkmod(
+                    final_atoms, work_dir="eos", volume_range=0.15, n_points=9
+                )
+            except Exception as e:
+                print(f"Error during optimization: {e}")
+                return
+        if "calculate_phonons" in config.properties_to_calculate:
+            try:
+                # Run phonon calculation
+                phonon_results = calc.run_phonon(
+                    final_atoms,
+                    work_dir="phonon",
+                    supercell=[2, 2, 2],
+                    amplitude=5e-4,
+                    gamma_centered=True,
+                )
+            except Exception as e:
+                print(f"Error during optimization: {e}")
+                return
+        # Run band structure
+        if "calculate_band_structure" in config.properties_to_calculate:
+            print("Running band structure calculation...")
+            try:
+                band_results = calc.run_band_structure(
+                    final_atoms, kpoints_bands, vasprun_bands
+                )
+                print(f"Bandgap: {band_results['bandgap']:.4f} eV")
+                print(
+                    f"VBM: {band_results['vbm']:.4f} eV"
+                    if band_results["vbm"]
+                    else "VBM: Metallic"
+                )
+                print(
+                    f"CBM: {band_results['cbm']:.4f} eV"
+                    if band_results["cbm"]
+                    else "CBM: Metallic"
+                )
+                if band_results["max_difference"]:
+                    print(
+                        f"Maximum band difference vs VASP: {band_results['max_difference']:.4f} eV"
+                    )
 
-            # Print summary
-            print("\n=== Calculation Summary ===")
-            print(f"System: {jid}")
-            print(f"Total energy: {band_results['energy']:.4f} eV")
-            print(f"Fermi level: {band_results['fermi_level']:.4f} eV")
-            print(f"Bandgap: {band_results['bandgap']:.4f} eV")
+                # Print file locations
+                print(
+                    f"Electronic properties saved: band/electronic_properties.json"
+                )
+                print(f"Band structure plot saved: band/band_structure.png")
+                print(f"DOS plot saved: band/dos.png")
 
-        except Exception as e:
-            print(f"Error during band structure calculation: {e}")
-            return
+                # Print summary
+                print("\n=== Calculation Summary ===")
+                print(f"System: {jid}")
+                print(f"Total energy: {band_results['energy']:.4f} eV")
+                print(f"Fermi level: {band_results['fermi_level']:.4f} eV")
+                print(f"Bandgap: {band_results['bandgap']:.4f} eV")
 
-        print("Calculations completed successfully!")
-        print("\nOutput structure:")
-        print("opt/")
-        print("  ├── electronic_properties.json")
-        print("  ├── dos.png")
-        print("  └── results.json")
-        print("band/")
-        print("  ├── electronic_properties.json")
-        print("  ├── band_structure.png")
-        print("  ├── dos.png")
-        print("  └── band_results.json")
+            except Exception as e:
+                print(f"Error during band structure calculation: {e}")
+                return
+
     except:
         pass
 

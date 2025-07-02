@@ -7,49 +7,21 @@ import zipfile
 import io
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Union
-
+from chipstb.utils import (
+    extract_kpoints_from_vasprun,
+    download_jarvis_dft_data,
+)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import requests
 import re
-
+import time
 from ase.io import read, write
 from jarvis.core.atoms import Atoms, ase_to_atoms
 from jarvis.db.figshare import get_jid_data
 from jarvis.io.vasp.outputs import Vasprun
-
-
-def extract_kpoints_from_vasprun(vasprun_file):
-    """Extract k-point list from vasprun.xml."""
-    with open(vasprun_file, "r") as file:
-        lines = file.readlines()
-
-    start = next(
-        (i for i, line in enumerate(lines) if "kpointlist" in line.lower()),
-        None,
-    )
-    end = next(
-        (
-            i
-            for i, line in enumerate(lines[start:], start)
-            if "</varray>" in line.lower()
-        ),
-        None,
-    )
-
-    if start is None or end is None:
-        raise ValueError("Could not find k-point list in vasprun.xml.")
-
-    kpoints = []
-    for line in lines[start + 1 : end]:
-        coords = [
-            float(x) for x in line.strip().strip("<v>").strip("</v>").split()
-        ]
-        kpoints.append(coords)
-
-    return kpoints
 
 
 class TB3PyCalc:
@@ -243,6 +215,7 @@ class TB3PyCalc:
         Returns:
             Dictionary with optimization results and final structure
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -352,6 +325,7 @@ println("Structure relaxation completed.")
                 cbm,
             )
 
+            t2 = time.time()
             # Compile results
             results = {
                 "energy": output_data.get("final_energy"),
@@ -361,6 +335,7 @@ println("Structure relaxation completed.")
                 "bandgap": bandgap,
                 "vbm": vbm,
                 "cbm": cbm,
+                "time": t2 - t1,
                 "band_summary": output_data.get("band_summary"),
                 "charge_transfer": output_data.get("dq"),
                 "initial_atoms": ase_to_atoms(atoms).to_dict(),
@@ -409,6 +384,7 @@ println("Structure relaxation completed.")
         Returns:
             Dictionary with band structure results
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -548,12 +524,14 @@ println("Band structure calculation completed.")
                 except Exception as e:
                     print(f"VASP comparison failed: {e}")
 
+            t2 = time.time()
             # Compile results
             results = {
                 "energy": output_data.get("total_energy"),
                 "fermi_level": output_data.get("fermi_level"),
                 "bandgap": bandgap,
                 "vbm": vbm,
+                "time": t2 - t1,
                 "cbm": cbm,
                 "band_info": output_data.get("band_info"),
                 "electronic_properties": electronic_props,
@@ -601,6 +579,7 @@ println("Band structure calculation completed.")
         Returns:
             Dictionary with EOS results including bulk modulus
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -748,6 +727,7 @@ println("Calculation completed.")
         plt.savefig(work_path / "eos_fit.png", dpi=300, bbox_inches="tight")
         plt.close()
 
+        t2 = time.time()
         # Compile results
         results = {
             "initial_volume_A3": float(V0),
@@ -758,6 +738,7 @@ println("Calculation completed.")
             "volume_range": volume_range,
             "n_points_calculated": len(energies),
             "n_points_requested": n_points,
+            "time": t2 - t1,
             "raw_data": {
                 "volumes_A3": volumes.tolist(),
                 "energies_eV": energies.tolist(),
@@ -805,6 +786,7 @@ println("Calculation completed.")
         Returns:
             Dictionary with phonon results
         """
+        t1 = time.time()
         work_path = Path(work_dir)
         work_path.mkdir(exist_ok=True)
 
@@ -904,6 +886,11 @@ println("Force calculation completed.")
         else:
             phonon_results = {"error": "No successful force calculations"}
 
+        t2 = time.time()
+        try:
+            phonon_results["time"] = t2 - t1
+        except Exception:
+            pass
         # Save results
         with open(work_path / "results.json", "w") as f:
             json.dump(
@@ -1309,32 +1296,6 @@ println("Force calculation completed.")
                             pass
 
 
-def download_vasp_data(jid):
-    """Download VASP data from JARVIS database."""
-    dat = get_jid_data(jid=jid, dataset="dft_3d")
-    atoms = Atoms.from_dict(dat["atoms"])
-    atoms = atoms.ase_converter()
-
-    # Find band structure calculation
-    for raw_file in dat["raw_files"]:
-        if "Bandst" in raw_file:
-            calc_zipfile_link = raw_file.split(",")[2]
-            r = requests.get(calc_zipfile_link)
-            z = zipfile.ZipFile(io.BytesIO(r.content))
-            vrun_content = z.read("vasprun.xml").decode("utf-8")
-
-            # Create temporary file
-            fd, path = tempfile.mkstemp()
-            with os.fdopen(fd, "w") as tmp:
-                tmp.write(vrun_content)
-
-            vrun = Vasprun(path)
-            kpoints = extract_kpoints_from_vasprun(path)
-            return atoms, vrun, kpoints
-
-    raise ValueError("No band structure data found")
-
-
 def main(jid="JVASP-816", julia_executable="julia", config=None):
     """
     Main execution function for TB3Py calculations.
@@ -1349,18 +1310,6 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
     work_path.mkdir(exist_ok=True)
     os.chdir(work_path)
 
-    # Default configuration
-    if config is None:
-        config = {
-            "run_optimization": True,
-            "run_band_structure": True,
-            "run_eos": True,
-            "run_phonon": True,
-            "compare_with_vasp": True,
-        }
-    else:
-        config = config.dict()
-
     try:
         # Check Julia executable
         if not shutil.which(julia_executable):
@@ -1369,13 +1318,24 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
             return
 
         # Download JARVIS data
+
         print(f"Downloading data for {jid}...")
         try:
-            atoms, vasprun, kpoints = download_vasp_data(jid)
-            print(f"Downloaded structure: {atoms.get_chemical_formula()}")
+            info = download_jarvis_dft_data(jid)
+            atoms = info["atoms"]
+            vasprun_bands = info["vasprun_bands"]
+            kpoints_bands = info["kpoints_bands"]
+            k_mesh = info["kpoints_scf"]
         except Exception as e:
             print(f"Error downloading VASP data: {e}")
             return
+
+        # try:
+        #    atoms, vasprun, kpoints = download_vasp_data(jid)
+        #    print(f"Downloaded structure: {atoms.get_chemical_formula()}")
+        # except Exception as e:
+        #    print(f"Error downloading VASP data: {e}")
+        #    return
 
         # Initialize calculator
         try:
@@ -1385,7 +1345,8 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
             return
 
         # Run optimization
-        if config.get("run_optimization", True):
+        # if config.get("run_optimization", True):
+        if "optimize_geometry" in config.properties_to_calculate:
             print("\n" + "=" * 50)
             print("Running geometry optimization...")
             print("=" * 50)
@@ -1403,17 +1364,19 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
 
         else:
             final_atoms = atoms
-
-        if config.get("run_band_structure", True):
+        if "calculate_band_structure" in config.properties_to_calculate:
+            # if config.get("run_band_structure", True):
             print("\n" + "=" * 50)
             print("Running band structure calculation...")
             print("=" * 50)
             try:
                 vasprun_for_comparison = (
-                    vasprun if config.get("compare_with_vasp", True) else None
+                    vasprun_bands
+                    if config.get("compare_with_vasp", True)
+                    else None
                 )
                 bs_path = ""
-                for kk in kpoints:
+                for kk in kpoints_bands:
                     # bs_path+=map(str(" ".join(kk)))+";"
                     bs_path += " ".join(map(str, kk)) + ";"
                 # print("bs_path",bs_path)
@@ -1442,7 +1405,8 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
                 print(f"✗ Error during band structure calculation: {e}")
 
         # Run EOS calculation
-        if config.get("run_eos", True):
+        if "calculate_eos" in config.properties_to_calculate:
+            # if config.get("run_eos", True):
             print("\n" + "=" * 50)
             print("Running equation of state calculation...")
             print("=" * 50)
@@ -1461,7 +1425,7 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
                 print(f"✗ Error during EOS calculation: {e}")
 
         # Run phonon calculation
-        if config.get("run_phonon", True):
+        if "calculate_phonons" in config.properties_to_calculate:
             print("\n" + "=" * 50)
             print("Running phonon calculation...")
             print("=" * 50)
@@ -1513,25 +1477,6 @@ def main(jid="JVASP-816", julia_executable="julia", config=None):
             bands = all_results["band_structure"]
             print(f"Bandgap: {bands.get('bandgap', 'N/A'):.4f} eV")
 
-        print("\nOutput structure:")
-        print("opt/")
-        print("  ├── results.json")
-        print("  ├── electronic_properties.json")
-        print("  └── POSCAR_relaxed")
-        print("eos/")
-        print("  ├── results.json")
-        print("  └── eos_fit.png")
-        print("band/")
-        print("  ├── results.json")
-        print("  ├── electronic_properties.json")
-        print("  ├── band_structure.png")
-        print("  └── vasp_comparison.png (if VASP data available)")
-        print("phonon/")
-        print("  ├── results.json")
-        print("  ├── phonon_bands.png")
-        print("  ├── phonon_dos.png")
-        print("  └── thermal_properties.png")
-
         print(f"\n✓ All calculations completed for {jid}!")
 
     except Exception as e:
@@ -1546,13 +1491,3 @@ if __name__ == "__main__":
 
     # Full calculation suite
     main(jid="JVASP-816", julia_executable="julia")
-
-    # Only optimization and band structure
-    # config = {
-    #     "run_optimization": True,
-    #     "run_band_structure": True,
-    #     "run_eos": False,
-    #     "run_phonon": False,
-    #     "compare_with_vasp": True
-    # }
-    # main(jid="JVASP-816", julia_executable="julia", config=config)
