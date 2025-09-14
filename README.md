@@ -63,3 +63,5 @@ unzip ParameterSets.zip
 ```
 python chipstb/run_chipstb.py --input_file chipstb/tb_input.json
 ```
+
+Note: This project was originally developed under the github.com/usnistgov organization and is now maintained here by the lead developer.
