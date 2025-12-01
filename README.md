@@ -39,7 +39,7 @@ Installing TB3Py
 ```
 wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.5-linux-x86_64.tar.gz
 tar -xvzf julia-1.11.5-linux-x86_64.tar.gz
-export PATH=julia/bin:$PATH
+export PATH=julia-1.11.5/bin:$PATH
 julia --version
 julia -e 'using Pkg; Pkg.add(["ThreeBodyTB", "Plots"]); Pkg.precompile()'
 ```
