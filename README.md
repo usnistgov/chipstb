@@ -30,7 +30,7 @@ conda activate my_chipstb
 
 ```
 git clone https://github.com/usnistgov/chipstb.git
-cd atomgpt
+cd chipstb
 pip install -e .
 ```
 
@@ -54,8 +54,17 @@ wget https://zenodo.org/records/14289468/files/ParameterSets.zip
 unzip ParameterSets.zip
 ```
 
+Installing SlaKoNet
 
+```
+git clone https://github.com/atomgptlab/slakonet.git
+cd slakonet
+pip install -e .
+```
 
+```
+predict_slakonet.py  --jid JVASP-1002
+```
 
 <a name="run"></a>
 # Run
@@ -65,3 +74,7 @@ python chipstb/run_chipstb.py --input_file chipstb/tb_input.json
 ```
 
 Note: This project was originally developed under the github.com/usnistgov organization and is now maintained here by the lead developer.
+
+# Reference
+
+https://arxiv.org/abs/2511.20740
