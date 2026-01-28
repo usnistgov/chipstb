@@ -1,5 +1,5 @@
 # chipstb
-CHIPSTB
+CHIPS-TB: Evaluating Tight-Binding Models For Metals, Semiconductors, and Insulators
 
 
 
