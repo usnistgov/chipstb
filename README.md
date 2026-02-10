@@ -29,7 +29,7 @@ conda activate my_chipstb
 ```
 
 ```
-git clone https://github.com/atomgptlab/chipstb.git
+git clone https://github.com/usnistgov/chipstb.git
 cd chipstb
 pip install -e .
 ```
@@ -77,4 +77,4 @@ Note: This project was originally developed under the github.com/usnistgov organ
 
 # Reference
 
-https://arxiv.org/abs/2511.20740
+https://doi.org/10.1021/acs.jpcc.5c08042
