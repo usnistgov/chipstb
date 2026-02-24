@@ -73,8 +73,7 @@ predict_slakonet.py  --jid JVASP-1002
 python chipstb/run_chipstb.py --input_file chipstb/tb_input.json
 ```
 
-Note: This project was originally developed under the github.com/usnistgov organization and is now maintained here by the lead developer.
 
 # Reference
 
-https://doi.org/10.1021/acs.jpcc.5c08042
+doi.org/10.1021/acs.jpcc.5c08042
