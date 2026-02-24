@@ -8,7 +8,7 @@ setup(
     name="chipstb",
     version="2024.11.30",
     author="In Jun Park, Kamal Choudhary",
-    author_email="kamal.choudhary@nist.gov",
+    author_email="injun.park@nist.gov",
     description="CHIPSTB: A tight binding analysis toolkit",
     long_description=long_description,
     long_description_content_type="text/markdown",
