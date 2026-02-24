@@ -1,7 +1,10 @@
 # chipstb
 CHIPS-TB: Evaluating Tight-Binding Models For Metals, Semiconductors, and Insulators
 
+The code acts as a validation and quality assurance engine for semi-empirical quantum models. In the hierarchy of materials modeling, Tight-Binding methods offer a speed advantage over DFT but often suffer from unknown accuracy or limited transferability. This software solves that problem by:
 
+1. Automating Comparison: It removes the manual effort of comparing approximate TB results with rigorous DFT standards (OptB88vdW, mBJ).
+2. Quantifying Fidelity: It provides concrete metrics (MAE, RMSE) that tell a user exactly how much accuracy they are sacrificing for speed when using a specific parameterization (e.g., PTBP vs. MatSci) for a specific material class.
 
 <a name="install"></a>
 # Installation
