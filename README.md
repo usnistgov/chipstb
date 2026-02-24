@@ -77,3 +77,7 @@ python chipstb/run_chipstb.py --input_file chipstb/tb_input.json
 # Reference
 
 doi.org/10.1021/acs.jpcc.5c08042
+
+# Disclaimer
+
+Certain commercial equipment, instruments, or materials (or suppliers, or software, ...) are identified in this paper to foster understanding. Such identification does not imply recommendation or endorsement by the National Institute of Standards and Technology, nor does it imply that the materials or equipment identified are necessarily the best available for the purpose.
